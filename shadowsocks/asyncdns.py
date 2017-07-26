@@ -331,6 +331,8 @@ class DNSResolver(object):
             with open(etc_path, 'rb') as f:
                 for line in f.readlines():
                     line = line.strip()
+                    if b"#" in line:
+                        line = line[:line.find(b'#')]
                     parts = line.split()
                     if len(parts) >= 2:
                         ip = parts[0]
@@ -362,7 +364,7 @@ class DNSResolver(object):
                 callback((hostname, ip), error)
             else:
                 callback((hostname, None),
-                         Exception('unknown hostname %s' % hostname))
+                         Exception('unable to parse hostname %s' % hostname))
         if hostname in self._hostname_to_cb:
             del self._hostname_to_cb[hostname]
         if hostname in self._hostname_status:

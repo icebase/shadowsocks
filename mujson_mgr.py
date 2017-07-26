@@ -1,4 +1,4 @@
-﻿#!/usr/bin/python
+#!/usr/bin/python
 # -*- coding: UTF-8 -*-
 
 import traceback
@@ -25,7 +25,7 @@ class MuJsonLoader(object):
 		self.json = json.loads(l)
 
 	def save(self, path):
-		if self.json:
+		if self.json is not None:
 			output = json.dumps(self.json, sort_keys=True, indent=4, separators=(',', ': '))
 			with open(path, 'a'):
 				pass
@@ -63,15 +63,25 @@ class MuMgr(object):
 				pass
 		return ret
 
-	def ssrlink(self, user, encode):
+	def ssrlink(self, user, encode, muid):
 		protocol = user.get('protocol', '')
 		obfs = user.get('obfs', '')
 		protocol = protocol.replace("_compatible", "")
 		obfs = obfs.replace("_compatible", "")
-		link = "%s:%s:%s:%s:%s:%s" % (self.server_addr, user['port'], protocol, user['method'], obfs, common.to_str(base64.urlsafe_b64encode(common.to_bytes(user['passwd']))).replace("=", ""))
+		protocol_param = ''
+		if muid is not None:
+			protocol_param_ = user.get('protocol_param', '')
+			param = protocol_param_.split('#')
+			if len(param) == 2:
+				for row in self.data.json:
+					if int(row['port']) == muid:
+						param = str(muid) + ':' + row['passwd']
+						protocol_param = '/?protoparam=' + common.to_str(base64.urlsafe_b64encode(common.to_bytes(param))).replace("=", "")
+						break
+		link = ("%s:%s:%s:%s:%s:%s" % (self.server_addr, user['port'], protocol, user['method'], obfs, common.to_str(base64.urlsafe_b64encode(common.to_bytes(user['passwd']))).replace("=", ""))) + protocol_param
 		return "ssr://" + (encode and common.to_str(base64.urlsafe_b64encode(common.to_bytes(link))).replace("=", "") or link)
 
-	def userinfo(self, user):
+	def userinfo(self, user, muid = None):
 		ret = ""
 		key_list = ['user', 'port', 'method', 'passwd', 'protocol', 'protocol_param', 'obfs', 'obfs_param', 'transfer_enable', 'u', 'd']
 		for key in sorted(user):
@@ -81,8 +91,19 @@ class MuMgr(object):
 			if key in ['enable'] or key not in user:
 				continue
 			ret += '\n'
-			if key in ['transfer_enable', 'u', 'd']:
-				val = user[key]
+			if (muid is not None) and (key in ['protocol_param']):
+				for row in self.data.json:
+					if int(row['port']) == muid:
+						ret += "    %s : %s" % (key, str(muid) + ':' + row['passwd'])
+						break
+			elif key in ['transfer_enable', 'u', 'd']:
+				if muid is not None:
+					for row in self.data.json:
+						if int(row['port']) == muid:
+							val = row[key]
+							break
+				else:
+					val = user[key]
 				if val / 1024 < 4:
 					ret += "    %s : %s" % (key, val)
 				elif val / 1024 ** 2 < 4:
@@ -96,8 +117,8 @@ class MuMgr(object):
 					ret += "    %s : %s  G Bytes" % (key, val)
 			else:
 				ret += "    %s : %s" % (key, user[key])
-		ret += "\n    " + self.ssrlink(user, False)
-		ret += "\n    " + self.ssrlink(user, True)
+		ret += "\n    " + self.ssrlink(user, False, muid)
+		ret += "\n    " + self.ssrlink(user, True, muid)
 		return ret
 
 	def rand_pass(self):
@@ -107,7 +128,7 @@ class MuMgr(object):
 		up = {'enable': 1, 'u': 0, 'd': 0, 'method': "aes-128-ctr",
 		'protocol': "auth_aes128_md5",
 		'obfs': "tls1.2_ticket_auth_compatible",
-		'transfer_enable': 1125899906842624}
+		'transfer_enable': 9007199254740992}
 		up['passwd'] = self.rand_pass()
 		up.update(user)
 
@@ -183,38 +204,44 @@ class MuMgr(object):
 			if 'port' in user and row['port'] != user['port']:
 				match = False
 			if match:
-				print("### user [%s] info %s" % (row['user'], self.userinfo(row)))
+				muid = None
+				if 'muid' in user:
+					muid = user['muid']
+				print("### user [%s] info %s" % (row['user'], self.userinfo(row, muid)))
 
 
 def print_server_help():
 	print('''usage: python mujson_manage.py -a|-d|-e|-c|-l [OPTION]...
 
 Actions:
-  -a ADD                 add/edit a user
-  -d DELETE              delete a user
-  -e EDIT                edit a user
-  -c CLEAR               set u/d to zero
-  -l LIST                display a user infomation or all users infomation
+  -a                   add/edit a user
+  -d                   delete a user
+  -e                   edit a user
+  -c                   set u&d to zero
+  -l                   display a user infomation or all users infomation
 
 Options:
-  -u USER                the user name
-  -p PORT                server port
-  -k PASSWORD            password
-  -m METHOD              encryption method, default: aes-128-cfb
-  -O PROTOCOL            protocol plugin, default: auth_sha1_v4
-  -o OBFS                obfs plugin, default: tls1.2_ticket_auth_compatible
-  -G PROTOCOL_PARAM      protocol plugin param
-  -g OBFS_PARAM          obfs plugin param
-  -t TRANSFER            max transfer for G bytes, default: 1048576, can be float point number
-  -f FORBID              set forbidden ports. Example (ban 1~79 and 81~100): -f "1-79,81-100"
+  -u USER              the user name
+  -p PORT              server port (only this option must be set if add a user)
+  -k PASSWORD          password
+  -m METHOD            encryption method, default: aes-128-ctr
+  -O PROTOCOL          protocol plugin, default: auth_aes128_md5
+  -o OBFS              obfs plugin, default: tls1.2_ticket_auth_compatible
+  -G PROTOCOL_PARAM    protocol plugin param
+  -g OBFS_PARAM        obfs plugin param
+  -t TRANSFER          max transfer for G bytes, default: 8388608 (8 PB or 8192 TB)
+  -f FORBID            set forbidden ports. Example (ban 1~79 and 81~100): -f "1-79,81-100"
+  -i MUID              set sub id to display (only work with -l)
+  -s SPEED             set speed_limit_per_con
+  -S SPEED             set speed_limit_per_user
 
 General options:
-  -h, --help             show this help message and exit
+  -h, --help           show this help message and exit
 ''')
 
 
 def main():
-	shortopts = 'adeclu:p:k:O:o:G:g:m:t:f:h'
+	shortopts = 'adeclu:i:p:k:O:o:G:g:m:t:f:hs:S:'
 	longopts = ['help']
 	action = None
 	user = {}
@@ -224,32 +251,24 @@ def main():
 			'+2': 'tls1.2_ticket_auth_compatible',
 			'2': 'tls1.2_ticket_auth'}
 	fast_set_protocol = {'0': 'origin',
-			'+ota': 'verify_sha1_compatible',
-			'ota': 'verify_sha1',
-			'a1': 'auth_sha1',
-			'+a1': 'auth_sha1_compatible',
-			'a2': 'auth_sha1_v2',
-			'+a2': 'auth_sha1_v2_compatible',
-			'a4': 'auth_sha1_v4',
-			'+a4': 'auth_sha1_v4_compatible',
+			's4': 'auth_sha1_v4',
+			'+s4': 'auth_sha1_v4_compatible',
 			'am': 'auth_aes128_md5',
 			'as': 'auth_aes128_sha1',
+			'ca': 'auth_chain_a',
 			}
-	fast_set_method = {'a0': 'aes-128-cfb',
-			'a1': 'aes-192-cfb',
-			'a2': 'aes-256-cfb',
+	fast_set_method = {'0': 'none',
+			'a1c': 'aes-128-cfb',
+			'a2c': 'aes-192-cfb',
+			'a3c': 'aes-256-cfb',
 			'r': 'rc4-md5',
 			'r6': 'rc4-md5-6',
 			'c': 'chacha20',
 			'ci': 'chacha20-ietf',
 			's': 'salsa20',
-			'b': 'bf-cfb',
-			'm0': 'camellia-128-cfb',
-			'm1': 'camellia-192-cfb',
-			'm2': 'camellia-256-cfb',
-			'a0t': 'aes-128-ctr',
-			'a1t': 'aes-192-ctr',
-			'a2t': 'aes-256-ctr'}
+			'a1': 'aes-128-ctr',
+			'a2': 'aes-192-ctr',
+			'a3': 'aes-256-ctr'}
 	try:
 		optlist, args = getopt.getopt(sys.argv[1:], shortopts, longopts)
 		for key, value in optlist:
@@ -265,6 +284,8 @@ def main():
 				action = 0
 			elif key == '-u':
 				user['user'] = value
+			elif key == '-i':
+				user['muid'] = int(value)
 			elif key == '-p':
 				user['port'] = int(value)
 			elif key == '-k':
@@ -283,6 +304,10 @@ def main():
 				user['obfs_param'] = value
 			elif key == '-G':
 				user['protocol_param'] = value
+			elif key == '-s':
+				user['speed_limit_per_con'] = int(value)
+			elif key == '-S':
+				user['speed_limit_per_user'] = int(value)
 			elif key == '-m':
 				if value in fast_set_method:
 					user['method'] = fast_set_method[value]
