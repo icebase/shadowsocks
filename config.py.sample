@@ -1,6 +1,0 @@
-# Config
-API_INTERFACE = 'MuApiV2' #mudbjson, sspanelv2, sspanelv3, sspanelv3ssr, MuApiV2
-
-mu_uri = 'http://example.xyz/mu'
-node_id = '1'
-token = '123'

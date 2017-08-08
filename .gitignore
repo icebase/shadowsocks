@@ -29,7 +29,6 @@ htmlcov
 
 .DS_Store
 .idea
-config.py
 
 # Ignore user config
 user-config.json
