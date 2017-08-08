@@ -1,0 +1,15 @@
+version: "2"
+
+services:
+  mysql:
+    image: orvice/shadowsocksr
+    restart: always
+    volumes:
+      - ./log:/var/log
+    environment:
+      - MU_URI=https://demo.sspanel.xyz/mu/v2
+      - MU_NODE_ID=1
+      - MU_TOKEN=forLove
+    container_name: shadowsocksr
+    network_mode: host
+ 
