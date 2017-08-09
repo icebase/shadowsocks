@@ -1,7 +1,7 @@
 version: "2"
 
 services:
-  mysql:
+  ssr:
     image: orvice/shadowsocksr
     restart: always
     volumes:
