@@ -18,7 +18,7 @@ RUN set -ex && \
                                 mbedtls-dev \
                                 pcre-dev \
                                 tar \
-                                udns-dev && \
+                                udns-dev 
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
