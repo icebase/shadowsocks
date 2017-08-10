@@ -25,6 +25,7 @@ RUN \
     ./configure && \
     make && make check && \
     make install && \
+    && ﻿ldconfig \
     mv src/libsodium /usr/local/ && \
     rm -Rf /tmpbuild/
 
