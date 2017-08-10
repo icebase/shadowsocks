@@ -1,33 +1,25 @@
-FROM python:3
+FROM python:alpine3.6
 
 WORKDIR /usr/src/app
 
-# Define Libsodium version
-ENV LIBSODIUM_VERSION 1.0.12
+﻿RUN set -ex && \
+    apk add --no-cache --virtual .build-deps \
+                                git \
+                                autoconf \
+                                automake \
+                                make \
+                                build-base \
+                                curl \
+                                libev-dev \
+                                libtool \
+                                linux-headers \
+                                udns-dev \
+                                libsodium-dev \
+                                mbedtls-dev \
+                                pcre-dev \
+                                tar \
+                                udns-dev && \
 
-# Install some tools: gcc build tools, unzip, etc
-RUN \
-    apt-get update && \
-    apt-get -y upgrade && \
-    apt-get -y install curl build-essential unzip locate
-
-# Download and install libsodium
-# https://download.libsodium.org/doc/
-
-# Download & extract & make libsodium
-# Move libsodium build
-RUN \
-    mkdir -p /tmpbuild/libsodium && \
-    cd /tmpbuild/libsodium && \
-    curl -L https://download.libsodium.org/libsodium/releases/libsodium-${LIBSODIUM_VERSION}.tar.gz -o libsodium-${LIBSODIUM_VERSION}.tar.gz && \
-    tar xfvz libsodium-${LIBSODIUM_VERSION}.tar.gz && \
-    cd /tmpbuild/libsodium/libsodium-${LIBSODIUM_VERSION}/ && \
-    ./configure && \
-    make && make check && \
-    make install && \
-    && ﻿ldconfig \
-    mv src/libsodium /usr/local/ && \
-    rm -Rf /tmpbuild/
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
