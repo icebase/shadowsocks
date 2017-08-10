@@ -1,24 +1,8 @@
-FROM python:alpine3.6
+FROM python:3.6
 
 WORKDIR /usr/src/app
 
-﻿RUN set -ex && \
-    apk add --no-cache --virtual .build-deps \
-                                git \
-                                autoconf \
-                                automake \
-                                make \
-                                build-base \
-                                curl \
-                                libev-dev \
-                                libtool \
-                                linux-headers \
-                                udns-dev \
-                                libsodium-dev \
-                                mbedtls-dev \
-                                pcre-dev \
-                                tar \
-                                udns-dev && \
+RUN apt-get update && apt-get install libsodium-dev -y
 
 
 COPY requirements.txt ./
