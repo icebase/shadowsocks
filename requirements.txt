@@ -1,3 +1,3 @@
 cymysql==0.8.9
 musdk==0.0.7
-python-dotenv=0.9.1
+python-dotenv==0.9.1
